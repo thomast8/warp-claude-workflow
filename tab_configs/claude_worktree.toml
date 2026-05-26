@@ -1,0 +1,19 @@
+# Cmd+T default: new-branch worktree in the current repo + Claude. Defaults to the
+# most-recently-used repo (no repo prompt, like the PR picker) - a tab config opens in
+# $HOME and can't see which tab you came from, so "current repo" = recent-repos[0],
+# updated whenever you cd. Prompts for the new branch name (re-prompts if it clashes).
+#
+# Two commands on purpose: the `cd` finishes as its own command so a prompt renders IN
+# the worktree first - that's when Warp samples the cwd and updates the tab's folder +
+# branch (it only does so at a command boundary, never mid-command). THEN Claude runs.
+# Command 2 is a bare `claude` so Warp recognizes the CLI agent and shows its toolbar
+# (a wrapped form like `[ ... ] && claude` is not recognized).
+name = "Claude · new worktree"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = [
+  'wt="$(~/.warp/bin/worktree-setup.sh)" && cd "$wt"',
+  'claude',
+]

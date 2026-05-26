@@ -1,0 +1,17 @@
+# Open a git worktree on an existing PR's head branch + Claude, from the new-tab (+)
+# menu. Offers an fzf picker over open PRs (gh + fzf). A tab config opens in $HOME and
+# can't inherit a repo, so it defaults to your most-recent repo (or prompts); to target
+# the repo you're in, run `caw` from that repo's shell and pick the PR there.
+#
+# Two commands on purpose (see claude_worktree.toml): the `cd` finishes first so a
+# prompt renders in the worktree and Warp samples its folder + branch, THEN a bare
+# `claude` runs (bare so Warp recognizes the CLI agent and shows its toolbar).
+name = "Claude · PR worktree"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = [
+  'wt="$(~/.warp/bin/pr-worktree.sh)" && cd "$wt"',
+  'claude',
+]

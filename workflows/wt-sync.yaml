@@ -1,0 +1,18 @@
+---
+name: Sync worktree to latest remote
+command: |
+  branch="$(git branch --show-current 2>/dev/null)" || { echo "Not in a git repo"; exit 1; }
+  git fetch --quiet origin "$branch" 2>/dev/null || true
+  behind="$(git rev-list --count "HEAD..origin/$branch" 2>/dev/null || echo 0)"
+  if [ "$behind" -eq 0 ]; then
+    echo "✓ Already up to date with origin/$branch"
+  elif git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null; then
+    git merge --ff-only "origin/$branch" \
+      && echo "✓ Fast-forwarded $behind commit(s) to origin/$branch" \
+      || echo "⚠ Could not fast-forward (branch has diverged locally)"
+  else
+    echo "⚠ $behind commit(s) behind origin/$branch but working tree has local changes - resolve manually"
+  fi
+tags: ['git', 'worktree', 'sync']
+description: Fetch and fast-forward the current worktree branch to match its remote. Safe - skips if working tree is dirty or branch has diverged.
+shells: [zsh, bash]

@@ -78,21 +78,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   done
   _copy_gitignored_dev_files "$repo_root" "$wt"
 
-  # Auto-sync: fast-forward to the upstream tracking ref if the worktree is behind and clean.
-  # Applies when an existing worktree is reused - new worktrees start fresh from $base.
+  # Auto-sync a reused worktree to its upstream (new worktrees start fresh from $base
+  # so they're already current). _sync_worktree fast-forwards when behind, resets onto
+  # the upstream when it was force-pushed/rebased, and keeps genuinely unpushed local
+  # commits untouched; see _lib.sh.
   upstream="$(git -C "$wt" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
-  if [ -n "$upstream" ]; then
-    behind="$(git -C "$wt" rev-list --count "HEAD..$upstream" 2>/dev/null || echo 0)"
-    if [ "$behind" -gt 0 ]; then
-      if git -C "$wt" diff --quiet 2>/dev/null && git -C "$wt" diff --cached --quiet 2>/dev/null; then
-        git -C "$wt" merge --ff-only "$upstream" >/dev/null 2>&1 \
-          && printf 'worktree: synced %s commit(s) to %s\n' "$behind" "$upstream" >&2 \
-          || printf 'worktree: warning: could not fast-forward to %s\n' "$upstream" >&2
-      else
-        printf 'worktree: warning: %s commit(s) behind %s (dirty worktree - run: git pull)\n' "$behind" "$upstream" >&2
-      fi
-    fi
-  fi
+  if [ -n "$upstream" ]; then _sync_worktree "$wt" "$upstream"; fi
 } >&2
 
 printf '%s\n' "$wt"

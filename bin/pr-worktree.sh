@@ -67,18 +67,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   fi
   _copy_gitignored_dev_files "$repo_root" "$wt"
 
-  # Auto-sync: fast-forward the worktree to the latest remote if working tree is clean.
-  # The fetch above (line ~50) already updated origin/$branch; this just moves HEAD to match.
-  behind="$(git -C "$wt" rev-list --count "HEAD..origin/$branch" 2>/dev/null || echo 0)"
-  if [ "$behind" -gt 0 ]; then
-    if git -C "$wt" diff --quiet 2>/dev/null && git -C "$wt" diff --cached --quiet 2>/dev/null; then
-      git -C "$wt" merge --ff-only "origin/$branch" >/dev/null 2>&1 \
-        && printf 'worktree: synced %s commit(s) to latest origin/%s\n' "$behind" "$branch" >&2 \
-        || printf 'worktree: warning: could not fast-forward to origin/%s (diverged locally?)\n' "$branch" >&2
-    else
-      printf 'worktree: warning: %s commit(s) behind origin/%s (dirty worktree - run: git pull)\n' "$behind" "$branch" >&2
-    fi
-  fi
+  # Auto-sync: move this (possibly reused, possibly stale) worktree onto the PR's
+  # current head. The fetch at line ~50 updated origin/$branch, but a fetch never
+  # moves the local branch - this does, hard-resetting if the PR was force-pushed or
+  # rebased. Unpushed local commits (e.g. on your OWN PR) are detected and kept; see
+  # _sync_worktree.
+  _sync_worktree "$wt" "origin/$branch"
 } >&2
 
 printf '%s\n' "$wt"

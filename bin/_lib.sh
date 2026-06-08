@@ -87,3 +87,91 @@ _format_pr_lines() {
     { printf "%s\t\033[1m#%-5s\033[0m %-50s  \033[2m⎇ %-28s @%s\033[0m\n", \
              $1, $1, trunc($2, 50), trunc($3, 28), $4 }'
 }
+
+# Does <wt>'s HEAD sit on a commit the remote-tracking ref <tracking> has pointed at,
+# now or anywhere in its reflog? If yes, every local commit was fetched from the
+# remote before it moved, so a divergence is a force-push/rebase and resetting onto
+# <tracking> loses nothing that wasn't already published. If no, the local branch
+# carries commits authored locally and never pushed - which must not be reset. This
+# is what separates "someone rebased this PR" (safe to take, even your OWN PR) from
+# "I have unpushed work on this branch" (keep it), and unlike a patch-id check it
+# still recognizes the force-push when the rebase also changed commit content.
+_head_was_published_on() {
+  local wt="$1" tracking="$2" head sha
+  head="$(git -C "$wt" rev-parse --verify --quiet HEAD 2>/dev/null)" || return 1
+  for sha in $(git -C "$wt" rev-parse --verify --quiet "$tracking" 2>/dev/null) \
+             $(git -C "$wt" reflog show --format='%H' "$tracking" 2>/dev/null); do
+    git -C "$wt" merge-base --is-ancestor "$head" "$sha" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+# Bring a reused worktree's checked-out branch up to <tracking> (a remote-tracking
+# ref) as aggressively as is SAFE, so a tab opens on current code instead of a stale
+# snapshot. Callers already ran `git fetch`, but a fetch only moves the remote-
+# tracking ref - this is what actually advances the local branch. Uncommitted changes
+# are ALWAYS stashed first and re-applied after, never dropped; committed work that
+# was never published is never discarded (see _head_was_published_on).
+#
+#   _sync_worktree <wt> <tracking>
+#
+# - behind, not diverged -> fast-forward.
+# - diverged but HEAD was published on <tracking> before -> force-push/rebase, so
+#   hard-reset onto it (dropped commits are stale copies, recoverable via reflog).
+# - diverged with genuinely unpushed local commits -> leave the branch and warn.
+_sync_worktree() {
+  local wt="$1" target="$2" behind ahead action="ff" ok=0 stashed=0
+  git -C "$wt" rev-parse --verify --quiet "$target^{commit}" >/dev/null 2>&1 || return 0
+
+  behind="$(git -C "$wt" rev-list --count "HEAD..$target" 2>/dev/null || echo 0)"
+  [ "${behind:-0}" -gt 0 ] || return 0           # already current (or only ahead) -> nothing to do
+  ahead="$(git -C "$wt" rev-list --count "$target..HEAD" 2>/dev/null || echo 0)"
+
+  if [ "${ahead:-0}" -gt 0 ]; then               # diverged: reset only if nothing local is unpublished
+    if _head_was_published_on "$wt" "$target"; then
+      action="reset"
+    else
+      action="bail"
+    fi
+  fi
+
+  if [ "$action" = "bail" ]; then
+    printf 'worktree: %s commit(s) behind %s and you have unpushed local commits - left as-is (git rebase %s)\n' \
+      "$behind" "$target" "$target" >&2
+    return 0
+  fi
+
+  # Stash tracked + untracked changes so the sync can't clobber them.
+  if ! { git -C "$wt" diff --quiet 2>/dev/null && git -C "$wt" diff --cached --quiet 2>/dev/null; }; then
+    if git -C "$wt" stash push -u -m 'warp-autosync' >/dev/null 2>&1; then
+      stashed=1
+    else
+      printf 'worktree: warning: %s behind %s but local changes would not stash - left as-is (git pull)\n' \
+        "$behind" "$target" >&2
+      return 0
+    fi
+  fi
+
+  if [ "$action" = "reset" ]; then
+    if git -C "$wt" reset --hard "$target" >/dev/null 2>&1; then
+      ok=1
+      printf 'worktree: %s was force-pushed; reset onto it (%s stale local commit(s) saved in reflog)\n' \
+        "$target" "$ahead" >&2
+    fi
+  else
+    if git -C "$wt" merge --ff-only "$target" >/dev/null 2>&1; then
+      ok=1
+      printf 'worktree: synced %s commit(s) to %s\n' "$behind" "$target" >&2
+    fi
+  fi
+  [ "$ok" = 1 ] || printf 'worktree: warning: could not advance to %s\n' "$target" >&2
+
+  if [ "$stashed" = 1 ]; then
+    if git -C "$wt" stash pop >/dev/null 2>&1; then
+      printf 'worktree: re-applied your uncommitted changes on top of %s\n' "$target" >&2
+    else
+      printf 'worktree: warning: uncommitted changes are stashed but conflicted on re-apply - run: git -C %s stash pop\n' "$wt" >&2
+    fi
+  fi
+  return 0
+}

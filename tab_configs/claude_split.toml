@@ -1,0 +1,34 @@
+# Split-screen Claude: two agents side by side in the same repo, from the new-tab (+)
+# menu. Cmd+D can't do this - Warp keybindings only fire built-in actions, so a Cmd+D
+# split lands at an empty prompt (it does inherit the repo via split_pane=previous_dir;
+# type `ca` there to launch Claude). This tab config is the one-click equivalent.
+#
+# A tab config opens in $HOME, so each pane resolves the repo with repo-default.sh
+# (current repo, else recent-repos[0]) before launching. Both panes resolve the SAME
+# repo and there's no picker, so no double-prompt. Two commands per pane on purpose
+# (see claude_worktree.toml): the `cd` finishes first so Warp samples the repo folder +
+# branch at the command boundary, THEN a bare `claude` runs (bare so Warp recognizes
+# the CLI agent and shows its toolbar).
+name = "Claude · split"
+
+[[panes]]
+id = "root"
+split = "horizontal"
+children = ["left", "right"]
+
+[[panes]]
+id = "left"
+type = "terminal"
+is_focused = true
+commands = [
+  '{ d="$(~/.warp/bin/repo-default.sh)" && [ -n "$d" ] && cd "$d"; } || true',
+  'claude',
+]
+
+[[panes]]
+id = "right"
+type = "terminal"
+commands = [
+  '{ d="$(~/.warp/bin/repo-default.sh)" && [ -n "$d" ] && cd "$d"; } || true',
+  'claude',
+]

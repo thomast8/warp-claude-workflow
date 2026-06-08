@@ -6,8 +6,14 @@ Generic Warp settings (theme, keybindings) are **not** here - Warp's own cloud S
 
 ## What's here
 
-- `tab_configs/` - launch configs: `claude_worktree` (`Cmd+T`: new-branch worktree + Claude), `claude_pr` (pick an open PR via fzf -> worktree + Claude), `claude_here` (Claude in the current repo).
-- `bin/` - the worktree machinery the launchers call: pick a repo/PR, create the worktree under `${WARP_WORKTREES_DIR:-~/worktrees}/<repo>/<name>`, copy gitignored dev files (`.env*`, `.claude/settings.local.json`), report cwd to Warp (OSC 7), and launch Claude. Pairs with the `ca` / `caw` shell launchers in [`shell-editor-dotfiles`](https://github.com/thomast8/shell-editor-dotfiles).
+- `tab_configs/` - launch configs: `launch` (the unified [wlaunch](https://github.com/thomast8/wlaunch) TUI via `wl`; intended `Cmd+T` default), `claude_worktree` / `claude_pr` / `claude_here` (per-flavour Claude launchers), and `lazygit` / `lazygit_pr` / `serie` / `serie_pr` (direct git-TUI launchers).
+- `bin/` - the worktree machinery the launchers call: pick a repo/PR, create the worktree under `${WARP_WORKTREES_DIR:-~/worktrees}/<repo>/<name>`, copy gitignored dev files (`.env*`, `.claude/settings.local.json`), report cwd to Warp (OSC 7), and launch the tool. Pairs with the `ca` / `caw` / `wl` shell launchers in [`shell-editor-dotfiles`](https://github.com/thomast8/shell-editor-dotfiles).
+
+The `launch` tab config runs the `wl` shell function, which drives the `wlaunch`
+binary (built to `~/.warp/bin/wlaunch`). To make it the `Cmd+T` default, set
+`default_session_mode = "tab_config"` + `default_tab_config_path = .../launch.toml` in
+`~/.warp/settings.toml` (machine-local, not in this repo) and confirm via the Warp
+tab-config sidecar's "Make default".
 
 ## Recommended Warp settings
 

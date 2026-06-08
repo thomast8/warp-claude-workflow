@@ -1,0 +1,18 @@
+# "Launch · pick" - the unified launcher as a new tab (and the intended new-tab
+# default). Runs the `wl` shell function, which opens the wlaunch TUI (browse a repo's
+# PRs / branches / worktrees / recent repos), resolves the chosen worktree, cd's there,
+# and launches the tool. claude is queued bare via `print -z` (Warp toolbar + command
+# boundary); lazygit/serie run inline; cancel drops to a plain shell - a tab is never a
+# trap. Single command on purpose: wl resolves the dynamic tool choice at RUNTIME, so
+# there's no static-command-2 problem (a tab config's command 2 is a fixed string and
+# only a bare `claude` is recognized as the CLI agent - wl's print -z gives us both).
+#
+# REQUIRES that `wl` (from zshrc) is available in a tab-config shell. Existing tab
+# configs only ever call absolute-path scripts + bare `claude`, never a function, so
+# verify this from the + menu BEFORE making it the Cmd+T default (see the repo README).
+name = "Launch · pick"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = ['wl']

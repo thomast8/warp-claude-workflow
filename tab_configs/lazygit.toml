@@ -1,0 +1,15 @@
+# "Lazygit · here" (new-tab + menu): open the lazygit TUI in the current repo, no
+# worktree. A tab config opens in $HOME, so command 1 cd's to the default repo (current
+# if resolvable, else the most-recently-used one from recent-repos), then lazygit runs in
+# that repo. Two commands on purpose (same as claude_here): the cd lands as its own
+# command so Warp samples the repo's folder + branch before lazygit takes over the screen.
+# If no repo is known, lazygit opens in $HOME and exits immediately if it isn't a git repo.
+name = "Lazygit · here"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = [
+  '{ d="$(~/.warp/bin/repo-default.sh)" && [ -n "$d" ] && cd "$d"; } || true',
+  'lazygit',
+]

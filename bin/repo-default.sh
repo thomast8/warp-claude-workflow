@@ -9,4 +9,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 . "$SCRIPT_DIR/_lib.sh"
-_repo_default || true
+# Current repo if we're inside one; otherwise the most-recent repo. A tab config always
+# runs in $HOME (never inside a repo), so in practice this is recent-repos[0] = the repo
+# you were last working in. The shared _repo_default() stays strict (no recents fallback)
+# for the worktree/PR pickers; the fallback lives here, where there's no picker to mislead.
+d="$(_repo_default || true)"
+[ -n "$d" ] || d="$(_recent_repos | head -n1 || true)"
+[ -n "$d" ] && printf '%s\n' "$d"

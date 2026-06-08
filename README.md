@@ -11,11 +11,10 @@ Generic Warp settings (theme, keybindings) are **not** here - Warp's own cloud S
 
 The `launch` tab config runs the `wl` shell function, which drives the `wlaunch`
 binary (built to `~/.warp/bin/wlaunch`). `Cmd+T` stays a plain terminal; reach the
-launcher via the **Command Palette** (`Cmd+P` → filter `launch_configs:` → "Launch · pick")
-or by typing `wl`. The Command Palette surfaces native Warp *launch configurations* (YAML
-in `~/.warp/launch_configurations/`, machine-local), so a polished one named "Launch · pick"
-(blue tab, runs `wl`) lives there; this repo's `launch.toml` is the `+`-menu tab config.
-Warp can't bind a key directly to one config, so the palette is the keyboard path.
+launcher via the **`+` menu** ("Launch · pick" → opens it as a tab) or by typing `wl`.
+(Native Warp *launch configurations* would also put it in the Command Palette, but they
+always open a **new window** - a known Warp limitation - so the tab config is the
+in-window path. Warp also can't bind a key directly to a config.)
 
 ## Recommended Warp settings
 

@@ -65,7 +65,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     [ -n "$branch" ] || { echo "worktree-setup: no branch name given" >&2; exit 1; }
     safe_branch="${branch//\//-}"
     wt="$wt_base/$safe_branch"
-    if [ -d "$wt" ]; then
+    # Branch already checked out somewhere (the primary checkout or another linked
+    # worktree)? Reuse that path - `git worktree add` would otherwise fail with
+    # "'<branch>' is already used by worktree at ...". This is the common case for
+    # the repo's default branch (main/master lives in the primary checkout).
+    checked_out="$(git worktree list --porcelain \
+      | awk -v b="refs/heads/$branch" '$1=="worktree"{w=substr($0,10)} $1=="branch" && $2==b {print w; exit}')"
+    if [ -n "$checked_out" ]; then
+      wt="$checked_out"; break                               # already checked out -> reuse in place
+    elif [ -d "$wt" ]; then
       break                                                  # worktree dir already exists -> reuse
     elif git show-ref --verify --quiet "refs/heads/$branch"; then
       if git worktree add "$wt" "$branch"; then break; fi    # existing branch -> check it out

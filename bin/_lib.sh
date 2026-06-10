@@ -24,6 +24,23 @@ _copy_gitignored_dev_files() {
   fi
 }
 
+# Pin gh and git-over-https to the account the current repo's git config selects
+# via wlaunch.ghaccount (routed per remote owner by ~/.gitconfig includeIf), by
+# exporting GH_TOKEN - which both the gh CLI and gh's git credential helper
+# prefer over the globally active account. Call AFTER cd'ing into the repo.
+# No-op when the key is unset; warns when the key names an account gh doesn't
+# know, since falling through to the active account would 404 confusingly.
+_export_gh_token() {
+  local acct token
+  command -v gh >/dev/null 2>&1 || return 0
+  acct="$(git config --get wlaunch.ghaccount 2>/dev/null)" && [ -n "$acct" ] || return 0
+  if token="$(gh auth token -u "$acct" 2>/dev/null)" && [ -n "$token" ]; then
+    export GH_TOKEN="$token"
+  else
+    echo "warning: wlaunch.ghaccount=$acct but gh has no token for it (gh auth login -u $acct)" >&2
+  fi
+}
+
 # Main worktree root for the current repo (so we base new worktrees off the primary
 # checkout even from inside a linked worktree).
 _main_repo_root() {

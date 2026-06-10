@@ -19,6 +19,7 @@ repo_root="$(_repo_default || true)"; [ -n "$repo_root" ] || repo_root="$(_repo_
 { [ -n "$repo_root" ] && git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; } \
   || { echo "worktree-pick: no git repository selected" >&2; exit 1; }
 cd "$repo_root"
+_export_gh_token
 
 if ! command -v fzf >/dev/null 2>&1; then
   exec "$SCRIPT_DIR/worktree-setup.sh"   # no fzf: just prompt for a new branch

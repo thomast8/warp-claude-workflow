@@ -19,6 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   { [ -n "$repo_root" ] && git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; } \
     || { echo "pr-worktree: no git repository selected" >&2; exit 1; }
   cd "$repo_root"
+  _export_gh_token
   repo_name="$(basename "$repo_root")"
   wt_base="$(_worktree_base "$repo_root")"
 

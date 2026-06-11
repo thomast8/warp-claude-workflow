@@ -22,6 +22,54 @@ _copy_gitignored_dev_files() {
       && cp "$src/.claude/settings.local.json" "$dst/.claude/settings.local.json" 2>/dev/null \
       && echo "worktree: copied .claude/settings.local.json" >&2
   fi
+  _copy_venv "$src" "$dst"
+}
+
+# Clone the main checkout's Python virtualenv into the worktree so it's runnable
+# immediately, instead of paying a fresh `uv sync` / pip install (slow when the
+# project has a build step) on every new worktree.
+#
+# Two correctness details a naive copy gets wrong:
+#  - A venv bakes its OWN absolute path into the activate scripts (VIRTUAL_ENV=...)
+#    and into every console-script shebang (#!/abs/.venv/bin/python). Left as-is,
+#    `source .venv/bin/activate` and `.venv/bin/<tool>` would point back at - and
+#    silently depend on - the main checkout's .venv. So we rewrite that path to the
+#    worktree's after copying. The interpreter symlink is absolute-to-the-Python
+#    (outside the venv) and copied as a symlink, so it stays valid untouched.
+#  - On APFS, `cp -c` uses clonefile(2): the copy is near-instant and shares blocks
+#    copy-on-write, so a big venv costs almost no time or disk; only the handful of
+#    repaired bin/ scripts diverge. Falls back to a plain recursive copy elsewhere.
+#
+# Skipped when the source has no venv or the worktree already has one.
+_copy_venv() {
+  local src="$1" dst="$2" old_logical old_real new f n=0
+  [ -f "$src/.venv/pyvenv.cfg" ] || return 0   # no venv to copy
+  [ -e "$dst/.venv" ] && return 0              # worktree already has one - don't clobber
+  cp -Rc "$src/.venv" "$dst/.venv" 2>/dev/null \
+    || cp -R "$src/.venv" "$dst/.venv" 2>/dev/null \
+    || { echo "worktree: .venv copy failed (run uv sync in the worktree)" >&2; return 0; }
+  # The baked paths may be the logical arg path OR its symlink-resolved (pwd -P)
+  # form - on macOS /var -> /private/var, and tools don't agree on which they
+  # write (activate uses one, console-script shebangs the other). Rewrite both to
+  # the worktree's resolved path so every reference lands in the new venv.
+  old_logical="$src/.venv"
+  old_real="$(cd "$src" && pwd -P)/.venv"
+  new="$(cd "$dst" && pwd -P)/.venv"
+  for f in "$dst/.venv/bin/"*; do
+    [ -f "$f" ] && [ ! -L "$f" ] || continue   # skip dirs + the interpreter symlink
+    grep -Iq . "$f" 2>/dev/null || continue    # skip binaries (grep -I: binary => no match)
+    grep -Fq -e "$old_logical" -e "$old_real" "$f" 2>/dev/null || continue
+    # Portable in-place rewrite that preserves the file's mode (executables): write
+    # a sibling temp, then overwrite contents in place. '|' delimiter dodges the '/'
+    # in the paths; these are controlled abs paths, so regex-metachar escaping isn't
+    # worth the noise.
+    if sed -e "s|$old_real|$new|g" -e "s|$old_logical|$new|g" "$f" > "$f.wlnew" 2>/dev/null \
+      && cat "$f.wlnew" > "$f" 2>/dev/null; then
+      n=$((n + 1))
+    fi
+    rm -f "$f.wlnew"
+  done
+  echo "worktree: cloned .venv (${n} script path(s) repaired)" >&2
 }
 
 # Pin gh and git-over-https to the account the current repo's git config selects

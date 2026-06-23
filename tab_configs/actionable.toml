@@ -1,0 +1,19 @@
+# "Actionable · pick" - open the wlaunch launcher straight into the Actionable
+# view, scoped to ALL your repos: the cross-repo "what needs me right now" board
+# (my blocked / changes-requested / thread-laden PRs, PRs awaiting my review, and
+# stale ones), sorted most-urgent first. `;a` toggles to just the current repo
+# (which adds the richer conflict/CI/thread signals); enter opens the selected PR
+# in its worktree in Claude, exactly like the PRs view.
+#
+# Single command on purpose (same rationale as launch.toml): `wl` resolves the
+# dynamic tool choice at RUNTIME. The flags ride through because the `wl` function
+# forwards "$@" to the wlaunch binary.
+#
+# REQUIRES `wl` (from zshrc) and a wlaunch binary new enough to accept --view /
+# --scope (older binaries ignore the flags and open the normal launcher).
+name = "Actionable · pick"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = ['wl --view actionable --scope all']

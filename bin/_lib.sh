@@ -102,6 +102,28 @@ _worktree_base() {
   printf '%s/%s' "${WARP_WORKTREES_DIR:-$HOME/worktrees}" "$(basename "$1")"
 }
 
+# Resolve the repository's default branch without touching the network. origin/HEAD
+# wins, then main/master when either a local or origin-tracking ref exists.
+_default_branch() {
+  local repo="$1" ref name
+  ref="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if [ -n "$ref" ]; then
+    name="${ref#origin/}"
+    if git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$name"; then
+      printf '%s\n' "$name"
+      return 0
+    fi
+  fi
+  for name in main master; do
+    if git -C "$repo" show-ref --verify --quiet "refs/heads/$name" \
+      || git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$name"; then
+      printf '%s\n' "$name"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Report the current directory to Warp via OSC 7. Tab configs run our script and we
 # cd + exec straight into claude, so the shell never emits its own cwd update - we
 # must, or the tab/sidebar/bottom-bar stay stuck on the launch dir ($HOME) with no

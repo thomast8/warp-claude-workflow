@@ -44,13 +44,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   wt_base="$(_worktree_base "$repo_root")"
   mkdir -p "$wt_base"
 
+  git fetch --quiet origin 2>/dev/null || true
+  default_branch="$(_default_branch "$repo_root" || true)"
   base="${2:-}"; case "$base" in "{{"*"}}") base="";; esac
   if [ -z "$base" ]; then
-    if   git show-ref --verify --quiet refs/remotes/origin/main;   then base="origin/main"
-    elif git show-ref --verify --quiet refs/remotes/origin/master; then base="origin/master"
-    else base="HEAD"; fi
+    if [ -n "$default_branch" ] && git show-ref --verify --quiet "refs/remotes/origin/$default_branch"; then
+      base="origin/$default_branch"
+    elif [ -n "$default_branch" ]; then
+      base="$default_branch"
+    else
+      base="HEAD"
+    fi
   fi
-  git fetch --quiet origin 2>/dev/null || true
 
   # Acquire a usable branch name and create its worktree. On creation failure (name
   # clashes with an existing branch or a "<name>/..." namespace, or the branch is
@@ -64,6 +69,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
       read -r branch || { echo "worktree-setup: cancelled" >&2; exit 130; }
     fi
     [ -n "$branch" ] || { echo "worktree-setup: no branch name given" >&2; exit 1; }
+    # The default branch belongs to the primary checkout. Reconcile that checkout
+    # safely instead of creating or reusing a secondary ~/worktrees/<repo>/main.
+    if [ -n "$default_branch" ] && [ "$branch" = "$default_branch" ]; then
+      wt="$("$SCRIPT_DIR/canonical-checkout.sh" "$repo_root")"
+      break
+    fi
     safe_branch="${branch//\//-}"
     wt="$wt_base/$safe_branch"
     # Branch already checked out somewhere (the primary checkout or another linked

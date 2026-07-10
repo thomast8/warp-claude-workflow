@@ -7,7 +7,15 @@ Generic Warp settings (theme, keybindings) are **not** here - Warp's own cloud S
 ## What's here
 
 - `tab_configs/` - `launch` (the unified [wlaunch](https://github.com/thomast8/wlaunch) TUI via `wl`) plus `claude_continue` / `claude_resume` / `claude_split` (Claude conversation resume + side-by-side panes - the cases wlaunch doesn't cover). The per-flavour here/PR/worktree Claude and lazygit/serie launchers are retired; wlaunch handles those.
-- `bin/` - the worktree machinery the launchers call: pick a repo/PR, create the worktree under `${WARP_WORKTREES_DIR:-~/worktrees}/<repo>/<name>`, copy gitignored dev files (`.env*`, `.claude/settings.local.json`, and a path-repaired clone of the `.venv` so the worktree is runnable without a fresh install), report cwd to Warp (OSC 7), and launch the tool. Pairs with the `ca` / `caw` / `wl` shell launchers in [`shell-editor-dotfiles`](https://github.com/thomast8/shell-editor-dotfiles).
+- `bin/` - the worktree machinery the launchers call: keep the default branch in the primary checkout, create one reusable worktree per feature/PR branch under `${WARP_WORKTREES_DIR:-~/worktrees}/<repo>/<name>`, copy gitignored dev files (`.env*`, `.claude/settings.local.json`, and a path-repaired clone of the `.venv` so the worktree is runnable without a fresh install), report cwd to Warp (OSC 7), and launch the tool. Pairs with the `ca` / `caw` / `wl` shell launchers in [`shell-editor-dotfiles`](https://github.com/thomast8/shell-editor-dotfiles).
+
+`canonical-checkout.sh <repo>` is the shared Claude/Codex ownership guard. It
+returns the primary checkout when it already owns the default branch. When safe, it
+detaches a clean secondary default-branch worktree and switches the clean primary
+checkout back to that branch. Dirty, locked, prunable, missing, in-progress, ignored-
+file-conflicting, or unwritable states fail with recovery instructions. Any failure
+after detaching triggers an ownership rollback; the helper never stashes, resets,
+force-removes, or deletes.
 
 The `launch` tab config runs the `wl` shell function, which drives the `wlaunch`
 binary (built to `~/.warp/bin/wlaunch`). `Cmd+T` stays a plain terminal; reach the
